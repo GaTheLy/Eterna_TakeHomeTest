@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { ArrowLeft, Plus, Clock, CheckCircle2, Circle } from 'lucide-react';
 import classNames from 'classnames';
+import TaskFormModal from '../components/TaskFormModal';
 
 interface Task {
   id: string;
@@ -29,6 +30,7 @@ export default function ProjectDetails() {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchProjectAndTasks = useCallback(async () => {
     try {
@@ -50,7 +52,7 @@ export default function ProjectDetails() {
     fetchProjectAndTasks();
   }, [fetchProjectAndTasks]);
 
-  if (loading) {
+  if (loading && !project) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
 
@@ -102,6 +104,7 @@ export default function ProjectDetails() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-900">Tasks</h2>
         <button
+          onClick={() => setIsModalOpen(true)}
           className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <Plus className="-ml-0.5 mr-2 h-4 w-4" />
@@ -141,7 +144,7 @@ export default function ProjectDetails() {
                           <div className="text-sm font-medium text-gray-900">{task.title}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{task.assignee.name}</div>
+                          <div className="text-sm text-gray-500">{task.assignee?.name || '-'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={classNames('px-2 inline-flex text-xs leading-5 font-semibold rounded-full', getPriorityColor(task.priority))}>
@@ -164,6 +167,16 @@ export default function ProjectDetails() {
           </div>
         </div>
       </div>
+      
+      <TaskFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          fetchProjectAndTasks();
+        }}
+        projectId={id!}
+      />
     </div>
   );
 }

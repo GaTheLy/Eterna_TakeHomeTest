@@ -211,7 +211,7 @@ The implementation follows a bottom-up approach: database → backend API → fr
   - Add Swagger decorators for API documentation
   - _Requirements: 4.1, 4.2, 4.3, 4.5, 15.1, 15.2, 15.3, 15.4, 15.5_
 
-- [~] 5.4 Write unit tests for ScheduleService
+- [x] 5.4 Write unit tests for ScheduleService
   - Test getSchedule returns tasks within date range
   - Test getSchedule excludes tasks outside date range
   - Test detectConflicts finds overlapping tasks for same assignee
@@ -219,7 +219,7 @@ The implementation follows a bottom-up approach: database → backend API → fr
   - Test detectConflicts handles edge cases (adjacent tasks, same start/end times)
   - _Requirements: 8.1, 8.3_
 
-- [~] 5.5 Write E2E tests for schedule endpoints
+- [x] 5.5 Write E2E tests for schedule endpoints
   - Test GET /schedule with valid date range (200 OK)
   - Test GET /schedule with invalid date range (400 Bad Request)
   - Test GET /schedule/conflicts returns conflicts (200 OK)
