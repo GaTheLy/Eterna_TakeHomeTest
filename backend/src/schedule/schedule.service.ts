@@ -60,7 +60,7 @@ export class ScheduleService {
 
     const results: ScheduleConflict[] = [];
 
-    for (const [assigneeId, userTasks] of conflictsByAssignee.entries()) {
+    for (const [_assigneeId, userTasks] of conflictsByAssignee.entries()) {
       const conflictingTasks = new Set<Task>();
 
       for (let i = 0; i < userTasks.length; i++) {
