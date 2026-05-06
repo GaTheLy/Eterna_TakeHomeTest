@@ -1,0 +1,16 @@
+# Node
+node_modules/
+dist/
+build/
+coverage/
+
+# Environment variables
+.env
+
+# MacOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
