@@ -158,14 +158,14 @@ The implementation follows a bottom-up approach: database → backend API → fr
   - Implement delete: hard delete from database
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 16.5, 16.6_
 
-- [-] 4.2 Create DTOs for task operations with validation
+- [x] 4.2 Create DTOs for task operations with validation
   - CreateTaskDto: title, description, priority, assigneeId, scheduledStart, scheduledEnd (validate dates)
   - UpdateTaskDto: all fields optional, validate scheduledEnd > scheduledStart
   - TaskQueryDto: status, priority, assigneeId, sortBy, sortOrder (all optional)
   - Add class-validator decorators and custom date validation
   - _Requirements: 3.10, 3.11, 3.12, 3.13, 3.14, 6.7_
 
-- [-] 4.3 Create Tasks controller with REST endpoints
+- [x] 4.3 Create Tasks controller with REST endpoints
   - GET /projects/:projectId/tasks with filtering and sorting query parameters
   - POST /projects/:projectId/tasks with JWT authentication
   - PATCH /tasks/:id with validation
@@ -173,7 +173,7 @@ The implementation follows a bottom-up approach: database → backend API → fr
   - Add Swagger decorators for API documentation
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 15.1, 15.2, 15.3, 15.4, 15.5_
 
-- [-] 4.4 Write unit tests for TasksService
+- [x] 4.4 Write unit tests for TasksService
   - Test create task with valid data
   - Test create task with invalid date range (scheduledEnd before scheduledStart)
   - Test findByProject with status filter
@@ -183,7 +183,7 @@ The implementation follows a bottom-up approach: database → backend API → fr
   - Test delete task
   - _Requirements: 8.1, 8.3_
 
-- [-] 4.5 Write E2E tests for tasks endpoints
+- [~] 4.5 Write E2E tests for tasks endpoints
   - Test POST /projects/:projectId/tasks with valid data (201 Created)
   - Test POST /projects/:projectId/tasks with invalid dates (400 Bad Request)
   - Test GET /projects/:projectId/tasks with filters (200 OK)
@@ -193,19 +193,19 @@ The implementation follows a bottom-up approach: database → backend API → fr
 
 ### 5. Schedule Management and Conflict Detection
 
-- [-] 5.1 Implement Schedule module with service
+- [x] 5.1 Implement Schedule module with service
   - Create ScheduleService with getSchedule and detectConflicts methods
   - Implement getSchedule: query tasks within date range using TypeORM query builder
   - Implement detectConflicts: find overlapping tasks for same assignee
   - Use SQL queries with date range conditions and joins
   - _Requirements: 4.1, 4.2, 4.3, 16.5, 16.6_
 
-- [-] 5.2 Create DTOs for schedule operations with validation
+- [x] 5.2 Create DTOs for schedule operations with validation
   - ScheduleQueryDto: start (required ISO 8601 date), end (required, must be after start)
   - Add class-validator decorators and custom date validation
   - _Requirements: 4.4, 6.7_
 
-- [ ] 5.3 Create Schedule controller with REST endpoints
+- [x] 5.3 Create Schedule controller with REST endpoints
   - GET /schedule with start and end query parameters
   - GET /schedule/conflicts returning grouped conflicts by assignee
   - Add Swagger decorators for API documentation
