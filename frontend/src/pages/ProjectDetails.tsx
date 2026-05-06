@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
-import { ArrowLeft, Plus, Clock, CheckCircle2, Circle } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2 } from 'lucide-react';
 import classNames from 'classnames';
 import TaskFormModal from '../components/TaskFormModal';
+import TaskFilters from '../components/TaskFilters';
+import { StatusBadge, Button, LoadingSpinner } from '../components/ui';
 
 interface Task {
   id: string;
@@ -14,6 +16,7 @@ interface Task {
   scheduledStart: string;
   scheduledEnd: string;
   assignee: {
+    id: string;
     name: string;
   };
 }
@@ -31,13 +34,20 @@ export default function ProjectDetails() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [filters, setFilters] = useState({
+    status: undefined,
+    priority: undefined,
+    sortBy: 'scheduledStart',
+    sortOrder: 'ASC'
+  });
 
   const fetchProjectAndTasks = useCallback(async () => {
     try {
       setLoading(true);
       const [projectRes, tasksRes] = await Promise.all([
         api.get(`/projects/${id}`),
-        api.get(`/projects/${id}/tasks`)
+        api.get(`/projects/${id}/tasks`, { params: filters })
       ]);
       setProject(projectRes.data);
       setTasks(tasksRes.data);
@@ -46,35 +56,47 @@ export default function ProjectDetails() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, filters]);
 
   useEffect(() => {
     fetchProjectAndTasks();
   }, [fetchProjectAndTasks]);
 
-  if (loading && !project) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
-  }
-
-  if (!project) {
-    return <div>Project not found</div>;
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'DONE': return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-      case 'IN_PROGRESS': return <Clock className="w-5 h-5 text-blue-500" />;
-      default: return <Circle className="w-5 h-5 text-gray-400" />;
+  const handleDeleteTask = async (taskId: string) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      fetchProjectAndTasks();
+    } catch (error) {
+      console.error('Failed to delete task', error);
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH': return 'bg-red-100 text-red-800';
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800';
-      case 'LOW': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  if (loading && !project) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
+        <Link to="/" className="mt-4 inline-flex items-center text-indigo-600 hover:text-indigo-500">
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back to Projects
+        </Link>
+      </div>
+    );
+  }
+
+  const stats = {
+    total: tasks.length,
+    todo: tasks.filter(t => t.status === 'TODO').length,
+    inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+    done: tasks.filter(t => t.status === 'DONE').length,
   };
 
   return (
@@ -86,36 +108,52 @@ export default function ProjectDetails() {
         </Link>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8 border border-gray-200">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <div>
-            <h3 className="text-lg leading-6 font-medium text-gray-900">{project.name}</h3>
+            <h3 className="text-xl leading-6 font-bold text-gray-900">{project.name}</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">{project.description}</p>
           </div>
-          <span className={classNames(
-            'px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full',
-            project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-          )}>
-            {project.status}
-          </span>
+          <StatusBadge status={project.status} type="project" />
         </div>
       </div>
 
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Tasks</h2>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <Plus className="-ml-0.5 mr-2 h-4 w-4" />
-          Create Task
-        </button>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-8">
+        <div className="bg-white overflow-hidden shadow rounded-lg p-5 border border-gray-200">
+          <dt className="text-sm font-medium text-gray-500 truncate text-center">Total Tasks</dt>
+          <dd className="mt-1 text-3xl font-bold text-indigo-600 text-center">{stats.total}</dd>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg p-5 border border-gray-200 border-t-4 border-t-gray-400">
+          <dt className="text-sm font-medium text-gray-500 truncate text-center">To Do</dt>
+          <dd className="mt-1 text-3xl font-bold text-gray-900 text-center">{stats.todo}</dd>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg p-5 border border-gray-200 border-t-4 border-t-blue-500">
+          <dt className="text-sm font-medium text-gray-500 truncate text-center">In Progress</dt>
+          <dd className="mt-1 text-3xl font-bold text-blue-600 text-center">{stats.inProgress}</dd>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg p-5 border border-gray-200 border-t-4 border-t-green-500">
+          <dt className="text-sm font-medium text-gray-500 truncate text-center">Done</dt>
+          <dd className="mt-1 text-3xl font-bold text-green-600 text-center">{stats.done}</dd>
+        </div>
       </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+        <h2 className="text-xl font-semibold text-gray-900">Tasks Management</h2>
+        <Button
+          onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
+          icon={Plus}
+        >
+          Create Task
+        </Button>
+      </div>
+
+      <TaskFilters filters={filters} onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))} />
 
       <div className="flex flex-col">
         <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-            <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+            <div className="shadow overflow-hidden border border-gray-200 sm:rounded-lg bg-white">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -130,33 +168,45 @@ export default function ProjectDetails() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {tasks.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                        No tasks found for this project.
+                      <td colSpan={6} className="px-6 py-10 whitespace-nowrap text-sm text-gray-500 text-center">
+                        {loading ? <LoadingSpinner size="sm" /> : 'No tasks found matching current filters.'}
                       </td>
                     </tr>
                   ) : (
                     tasks.map((task) => (
-                      <tr key={task.id}>
+                      <tr key={task.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusIcon(task.status)}
+                          <StatusBadge status={task.status} type="task" />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{task.title}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{task.assignee?.name || '-'}</div>
+                          <div className="text-sm text-gray-500">{task.assignee?.name || 'Unassigned'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={classNames('px-2 inline-flex text-xs leading-5 font-semibold rounded-full', getPriorityColor(task.priority))}>
-                            {task.priority}
-                          </span>
+                          <StatusBadge status={task.priority} type="priority" />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(task.scheduledStart).toLocaleDateString()} - {new Date(task.scheduledEnd).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
-                          <button className="text-red-600 hover:text-red-900">Delete</button>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="secondary" 
+                              size="sm"
+                              onClick={() => { setEditingTask(task); setIsModalOpen(true); }}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="danger" 
+                              size="sm"
+                              onClick={() => handleDeleteTask(task.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -170,12 +220,14 @@ export default function ProjectDetails() {
       
       <TaskFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setEditingTask(null); }}
         onSuccess={() => {
           setIsModalOpen(false);
+          setEditingTask(null);
           fetchProjectAndTasks();
         }}
         projectId={id!}
+        task={editingTask}
       />
     </div>
   );

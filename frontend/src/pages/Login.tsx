@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-form'; // Wait I used react-hook-form
-import { useForm as useHookForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const schema = yup.object({
   email: yup.string().email('Must be a valid email').required('Email is required'),
@@ -16,11 +15,19 @@ const schema = yup.object({
 type FormData = yup.InferType<typeof schema>;
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [error, setError] = useState('');
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useHookForm<FormData>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: yupResolver(schema)
   });
+
+  // Redirect to projects if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data: FormData) => {
     try {

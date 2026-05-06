@@ -1,7 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../api/axios';
-import { Calendar, AlertCircle } from 'lucide-react';
-import classNames from 'classnames';
+import { AlertCircle } from 'lucide-react';
+import { Calendar, dateFnsLocalizer, Views, type EventProps } from 'react-big-calendar';
+import { format, parse, startOfWeek, getDay, startOfMonth, endOfMonth, endOfWeek } from 'date-fns';
+import { enUS } from 'date-fns/locale';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { Button, LoadingSpinner } from '../components/ui';
+
+const locales = {
+  'en-US': enUS,
+};
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
 
 interface Task {
   id: string;
@@ -18,11 +34,20 @@ interface Task {
   };
 }
 
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource: Task;
+}
+
 interface Conflict {
   assignee: {
     name: string;
   };
   conflictingTasks: Array<{
+    id?: string;
     title: string;
     projectName: string;
     scheduledStart: string;
@@ -35,35 +60,25 @@ export default function ScheduleView() {
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConflicts, setShowConflicts] = useState(false);
-  
-  // Set default date range to current week
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    return d.toISOString().split('T')[0];
-  });
-  
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    d.setHours(23,59,59,999);
-    return d.toISOString().split('T')[0];
-  });
+  const [viewDate, setViewDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState(Views.MONTH);
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = useCallback(async (start: Date, end: Date) => {
     try {
       setLoading(true);
-      const startIso = new Date(startDate).toISOString();
-      const endIso = new Date(endDate + 'T23:59:59').toISOString();
-      
-      const response = await api.get(`/schedule?start=${startIso}&end=${endIso}`);
+      const response = await api.get(`/schedule`, {
+        params: {
+          start: start.toISOString(),
+          end: end.toISOString(),
+        }
+      });
       setTasks(response.data);
     } catch (error) {
       console.error('Failed to fetch schedule', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const fetchConflicts = async () => {
     try {
@@ -75,80 +90,102 @@ export default function ScheduleView() {
     }
   };
 
+  // Fetch data when date or view changes
   useEffect(() => {
-    fetchSchedule();
-  }, [startDate, endDate]);
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH': return 'bg-red-100 border-red-300 text-red-800';
-      case 'MEDIUM': return 'bg-yellow-100 border-yellow-300 text-yellow-800';
-      case 'LOW': return 'bg-blue-100 border-blue-300 text-blue-800';
-      default: return 'bg-gray-100 border-gray-300 text-gray-800';
+    let start, end;
+    if (currentView === Views.MONTH) {
+      start = startOfWeek(startOfMonth(viewDate));
+      end = endOfWeek(endOfMonth(viewDate));
+    } else if (currentView === Views.WEEK) {
+      start = startOfWeek(viewDate);
+      end = endOfWeek(viewDate);
+    } else {
+      start = viewDate;
+      end = viewDate;
     }
+    fetchSchedule(start, end);
+  }, [viewDate, currentView, fetchSchedule]);
+
+  const events = useMemo<CalendarEvent[]>(() => {
+    return tasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      start: new Date(task.scheduledStart),
+      end: new Date(task.scheduledEnd),
+      resource: task
+    }));
+  }, [tasks]);
+
+  const eventPropGetter = (event: CalendarEvent) => {
+    const priority = event.resource.priority;
+    let backgroundColor = '#6366f1'; // indigo-500
+    if (priority === 'HIGH') backgroundColor = '#ef4444'; // red-500
+    if (priority === 'MEDIUM') backgroundColor = '#f59e0b'; // amber-500
+    if (priority === 'LOW') backgroundColor = '#10b981'; // emerald-500
+
+    // Highlight if in conflicts
+    const isConflicting = conflicts.some(c => 
+      c.conflictingTasks.some(t => t.title === event.resource.title)
+    );
+
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: '4px',
+        opacity: 0.9,
+        color: 'white',
+        border: isConflicting ? '2px solid #000' : 'none',
+        display: 'block',
+        fontSize: '12px',
+        padding: '2px 5px',
+      }
+    };
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Schedule</h1>
-        <button
-          onClick={fetchConflicts}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-        >
-          <AlertCircle className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-          Check Conflicts
-        </button>
-      </div>
-
-      <div className="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6 mb-6">
-        <div className="md:grid md:grid-cols-3 md:gap-6">
-          <div className="md:col-span-1">
-            <h3 className="text-lg font-medium leading-6 text-gray-900">Date Range</h3>
-            <p className="mt-1 text-sm text-gray-500">Filter scheduled tasks by date range.</p>
-          </div>
-          <div className="mt-5 md:mt-0 md:col-span-2">
-            <div className="grid grid-cols-6 gap-6">
-              <div className="col-span-6 sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
-                />
-              </div>
-              <div className="col-span-6 sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
-                />
-              </div>
-            </div>
-          </div>
+    <div className="h-full flex flex-col space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Schedule Calendar</h1>
+        <div className="flex gap-3">
+          {showConflicts && (
+            <Button
+              variant="secondary"
+              onClick={() => setShowConflicts(false)}
+            >
+              Clear Highlights
+            </Button>
+          )}
+          <Button
+            variant="danger"
+            onClick={fetchConflicts}
+            icon={AlertCircle}
+          >
+            Check Conflicts
+          </Button>
         </div>
       </div>
 
       {showConflicts && conflicts.length > 0 && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-md shadow-sm">
+        <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-lg shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex">
             <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
+              <AlertCircle className="h-6 w-6 text-red-500" aria-hidden="true" />
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Schedule Conflicts Detected</h3>
-              <div className="mt-2 text-sm text-red-700">
-                <ul className="list-disc pl-5 space-y-2">
+            <div className="ml-4">
+              <h3 className="text-lg font-bold text-red-800">Schedule Conflicts Detected</h3>
+              <div className="mt-3 text-sm text-red-700">
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {conflicts.map((conflict, idx) => (
-                    <li key={idx}>
-                      <span className="font-semibold">{conflict.assignee.name}</span> has overlapping tasks:
-                      <ul className="list-circle pl-5 mt-1 space-y-1 text-xs">
+                    <li key={idx} className="bg-white/50 p-3 rounded border border-red-100">
+                      <span className="font-bold text-red-900 underline decoration-red-200">{conflict.assignee.name}</span>
+                      <ul className="mt-2 space-y-2">
                         {conflict.conflictingTasks.map((t, tIdx) => (
-                          <li key={tIdx}>
-                            {t.title} ({t.projectName}) - {new Date(t.scheduledStart).toLocaleString()} to {new Date(t.scheduledEnd).toLocaleString()}
+                          <li key={tIdx} className="text-xs">
+                            <p className="font-semibold text-gray-900">{t.title}</p>
+                            <p className="text-gray-500 font-medium">{t.projectName}</p>
+                            <p className="text-gray-400 tabular-nums">
+                              {format(new Date(t.scheduledStart), 'MMM d, HH:mm')} - {format(new Date(t.scheduledEnd), 'MMM d, HH:mm')}
+                            </p>
                           </li>
                         ))}
                       </ul>
@@ -162,62 +199,52 @@ export default function ScheduleView() {
       )}
 
       {showConflicts && conflicts.length === 0 && (
-        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6 rounded-md shadow-sm">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-green-700">No schedule conflicts detected.</p>
+        <div className="bg-green-50 border-l-4 border-green-500 p-5 rounded-r-lg shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-6 w-6 text-green-500" aria-hidden="true" />
+            </div>
+            <div className="ml-4">
+              <p className="text-base font-bold text-green-800">Perfect Harmony! No schedule conflicts detected.</p>
             </div>
           </div>
         </div>
       )}
 
-      {loading ? (
-        <div className="text-center py-12">Loading...</div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {tasks.length === 0 ? (
-              <li className="px-6 py-12 text-center text-gray-500">
-                <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                No tasks scheduled in this date range.
-              </li>
-            ) : (
-              tasks.map((task) => (
-                <li key={task.id}>
-                  <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">{task.title}</p>
-                      <div className="ml-2 flex-shrink-0 flex">
-                        <p className={classNames('px-2 inline-flex text-xs leading-5 font-semibold rounded-full border', getPriorityColor(task.priority))}>
-                          {task.priority}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          Project: {task.project?.name || '-'}
-                        </p>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
-                          Assignee: {task.assignee?.name || '-'}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                        <p>
-                          {new Date(task.scheduledStart).toLocaleDateString()} {new Date(task.scheduledStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
-                          &nbsp;&mdash;&nbsp; 
-                          {new Date(task.scheduledEnd).toLocaleDateString()} {new Date(task.scheduledEnd).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
+      <div className="bg-white shadow-2xl rounded-2xl p-6 border border-gray-100 relative flex-1 min-h-[700px]">
+        {loading && (
+          <div className="absolute inset-0 z-20 bg-white/60 flex items-center justify-center backdrop-blur-sm rounded-2xl">
+            <div className="flex flex-col items-center gap-3">
+              <LoadingSpinner size="lg" />
+              <p className="text-sm font-medium text-gray-500 animate-pulse">Syncing schedule...</p>
+            </div>
+          </div>
+        )}
+        <div style={{ height: '700px' }}>
+          <Calendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: '100%' }}
+            onNavigate={(date) => setViewDate(date)}
+            onView={(view) => setCurrentView(view)}
+            view={currentView as any}
+            date={viewDate}
+            eventPropGetter={eventPropGetter}
+            views={[Views.MONTH, Views.WEEK, Views.DAY]}
+            components={{
+              event: ({ event }: EventProps<CalendarEvent>) => (
+                <div className="flex flex-col h-full leading-tight overflow-hidden">
+                  <span className="font-bold text-[11px] truncate">{event.title}</span>
+                  <span className="text-[9px] opacity-90 truncate">{event.resource.project.name}</span>
+                </div>
+              )
+            }}
+            tooltipAccessor={(event) => `${event.title} (${event.resource.project.name})\nAssignee: ${event.resource.assignee.name}`}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }

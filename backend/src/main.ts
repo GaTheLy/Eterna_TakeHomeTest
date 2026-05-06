@@ -7,6 +7,9 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable CORS for frontend integration
+  app.enableCors();
+
   // Enable global exception filter for consistent error handling
   app.useGlobalFilters(new AllExceptionsFilter());
 

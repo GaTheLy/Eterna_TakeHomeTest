@@ -12,7 +12,7 @@ import {
   ValidationArguments,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { TaskPriority } from '../entities/task.entity';
+import { TaskPriority, TaskStatus } from '../entities/task.entity';
 
 @ValidatorConstraint({ name: 'IsAfter', async: false })
 export class IsAfterConstraint implements ValidatorConstraintInterface {
@@ -66,6 +66,16 @@ export class CreateTaskDto {
   })
   @IsEnum(TaskPriority)
   priority!: TaskPriority;
+
+  @ApiProperty({
+    description: 'Task status',
+    enum: TaskStatus,
+    example: TaskStatus.TODO,
+    required: false,
+  })
+  @IsEnum(TaskStatus)
+  @IsOptional()
+  status?: TaskStatus;
 
   @ApiProperty({
     description: 'UUID of the user assigned to this task',

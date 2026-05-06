@@ -65,4 +65,12 @@ export class UsersService {
 
     return this.userRepository.save(user);
   }
+
+  /**
+   * Find all users
+   * @returns List of all users
+   */
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find();
+  }
 }

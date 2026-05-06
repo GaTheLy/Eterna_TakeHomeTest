@@ -28,11 +28,9 @@ async function seed() {
   const projectRepository = AppDataSource.getRepository(Project);
   const taskRepository = AppDataSource.getRepository(Task);
 
-  // Clear existing data (in reverse order of dependencies)
+  // Clear existing data with CASCADE to handle foreign key constraints
   console.log('🧹 Clearing existing data...');
-  await taskRepository.delete({});
-  await projectRepository.delete({});
-  await userRepository.delete({});
+  await AppDataSource.query('TRUNCATE TABLE "tasks", "projects", "users" RESTART IDENTITY CASCADE');
   console.log('✅ Existing data cleared');
 
   // Create users
