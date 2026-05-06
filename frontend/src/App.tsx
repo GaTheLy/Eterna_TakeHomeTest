@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProjectList from './pages/ProjectList';
 import ProjectDetails from './pages/ProjectDetails';
+import ScheduleView from './pages/ScheduleView';
 
 function App() {
   return (
@@ -26,7 +27,7 @@ function App() {
           >
             <Route index element={<ProjectList />} />
             <Route path="projects/:id" element={<ProjectDetails />} />
-            <Route path="schedule" element={<div>Schedule (Coming soon)</div>} />
+            <Route path="schedule" element={<ScheduleView />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />
