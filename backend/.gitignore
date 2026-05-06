@@ -6,21 +6,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
 # ===================================
 # Build outputs
 # ===================================
 dist/
-dist-ssr/
 build/
-*.local
 
 # ===================================
 # Test coverage
 # ===================================
 coverage/
 .nyc_output/
+*.lcov
 
 # ===================================
 # Environment variables
@@ -36,15 +34,21 @@ coverage/
 !.env.example
 
 # ===================================
+# Database
+# ===================================
+*.sqlite
+*.sqlite3
+*.db
+
+# ===================================
 # Logs
 # ===================================
 logs/
 *.log
 
 # ===================================
-# Vite specific
+# NestJS specific
 # ===================================
-.vite/
 *.tsbuildinfo
 
 # ===================================
@@ -56,51 +60,20 @@ logs/
 *.backup
 
 # ===================================
-# IDEs and Editors
+# IDEs
 # ===================================
-# VSCode
 .vscode/*
-!.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
-
-# JetBrains
+!.vscode/extensions.json
 .idea/
-*.iml
-*.iws
-*.ipr
-
-# Vim
 *.swp
 *.swo
 *~
-*.sw?
-
-# Other editors
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 
 # ===================================
 # Operating System
 # ===================================
 .DS_Store
-.AppleDouble
-.LSOverride
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-Desktop.ini
-
-# ===================================
-# React/Vite specific
-# ===================================
-.cache/
-.parcel-cache/
-
-# ===================================
-# Testing
-# ===================================
-.vitest/
