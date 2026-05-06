@@ -1,18 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Calendar, LogOut, User, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, LogOut, User, Menu, X, Wifi, WifiOff } from 'lucide-react';
 import classNames from 'classnames';
+import socketService from '../services/socket';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
 
   const navigation = [
     { name: 'Projects', href: '/', icon: LayoutDashboard },
     { name: 'Schedule', href: '/schedule', icon: Calendar },
   ];
+
+  // Check WebSocket connection status
+  useEffect(() => {
+    const checkConnection = () => {
+      setIsSocketConnected(socketService.isConnected());
+    };
+
+    checkConnection();
+    const interval = setInterval(checkConnection, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
@@ -20,23 +34,41 @@ export default function Layout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-xl font-bold text-indigo-600">TaskMgr</h1>
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="text-gray-600 hover:text-gray-900 focus:outline-none"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* WebSocket Connection Status - Mobile */}
+            <div className="flex items-center" title={isSocketConnected ? 'WebSocket Connected' : 'WebSocket Disconnected'}>
+              {isSocketConnected ? (
+                <Wifi className="h-5 w-5 text-green-500" />
+              ) : (
+                <WifiOff className="h-5 w-5 text-gray-400" />
+              )}
+            </div>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-gray-600 hover:text-gray-900 focus:outline-none"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Sidebar - Desktop */}
       <div className="hidden lg:flex w-64 bg-white shadow-lg flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-gray-200">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-indigo-600">TaskMgr</h1>
+          {/* WebSocket Connection Status */}
+          <div className="flex items-center" title={isSocketConnected ? 'WebSocket Connected' : 'WebSocket Disconnected'}>
+            {isSocketConnected ? (
+              <Wifi className="h-5 w-5 text-green-500" />
+            ) : (
+              <WifiOff className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
         </div>
         
         <nav className="flex-1 px-4 py-4 space-y-1">

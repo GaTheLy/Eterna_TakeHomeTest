@@ -5,10 +5,15 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    cors: true, // Enable CORS at application level
+  });
 
-  // Enable CORS for frontend integration
-  app.enableCors();
+  // Enable CORS for frontend integration (including WebSocket)
+  app.enableCors({
+    origin: '*', // Allow all origins in development
+    credentials: true,
+  });
 
   // Enable global exception filter for consistent error handling
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -52,8 +57,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`Swagger documentation available at: http://localhost:${process.env.PORT ?? 3000}/api/docs`);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
+  console.log(`WebSocket server is running on: ws://localhost:${port}`);
 }
 bootstrap();

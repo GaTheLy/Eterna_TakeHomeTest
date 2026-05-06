@@ -2,9 +2,11 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../api/axios';
 import { AlertCircle } from 'lucide-react';
 import { Calendar, dateFnsLocalizer, Views, type EventProps } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay, startOfMonth, endOfMonth, endOfWeek } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { Button, LoadingSpinner } from '../components/ui';
 
 const locales = {
@@ -18,6 +20,11 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
+
+// Enable drag and drop with compatibility fix for ESM/CJS
+const DnDCalendar = (withDragAndDrop as any).default 
+  ? (withDragAndDrop as any).default(Calendar) 
+  : withDragAndDrop(Calendar);
 
 interface Task {
   id: string;
@@ -90,6 +97,79 @@ export default function ScheduleView() {
     }
   };
 
+  // Handle event drop (drag and drop rescheduling)
+  const handleEventDrop = async ({ event, start, end }: any) => {
+    // Basic validation: ensure end is after start
+    if (new Date(end) <= new Date(start)) {
+      // If same date, set end to end of day
+      const newEnd = new Date(start);
+      newEnd.setHours(23, 59, 59, 999);
+      end = newEnd;
+    }
+    try {
+      // Update task dates via API
+      await api.patch(`/tasks/${event.id}`, {
+        scheduledStart: start.toISOString(),
+        scheduledEnd: end.toISOString(),
+      });
+
+      // Refresh schedule to show updated task
+      let rangeStart, rangeEnd;
+      if (currentView === Views.MONTH) {
+        rangeStart = startOfWeek(startOfMonth(viewDate));
+        rangeEnd = endOfWeek(endOfMonth(viewDate));
+      } else if (currentView === Views.WEEK) {
+        rangeStart = startOfWeek(viewDate);
+        rangeEnd = endOfWeek(viewDate);
+      } else {
+        rangeStart = new Date(viewDate);
+        rangeStart.setHours(0, 0, 0, 0);
+        rangeEnd = new Date(viewDate);
+        rangeEnd.setHours(23, 59, 59, 999);
+      }
+      fetchSchedule(rangeStart, rangeEnd);
+    } catch (error: any) {
+      console.error('Failed to reschedule task', error);
+      alert(error.response?.data?.message || 'Failed to reschedule task. Please try again.');
+    }
+  };
+
+  // Handle event resize (change duration)
+  const handleEventResize = async ({ event, start, end }: any) => {
+    // Basic validation: ensure end is after start
+    if (new Date(end) <= new Date(start)) {
+      const newEnd = new Date(start);
+      newEnd.setHours(23, 59, 59, 999);
+      end = newEnd;
+    }
+    try {
+      // Update task dates via API
+      await api.patch(`/tasks/${event.id}`, {
+        scheduledStart: start.toISOString(),
+        scheduledEnd: end.toISOString(),
+      });
+
+      // Refresh schedule to show updated task
+      let rangeStart, rangeEnd;
+      if (currentView === Views.MONTH) {
+        rangeStart = startOfWeek(startOfMonth(viewDate));
+        rangeEnd = endOfWeek(endOfMonth(viewDate));
+      } else if (currentView === Views.WEEK) {
+        rangeStart = startOfWeek(viewDate);
+        rangeEnd = endOfWeek(viewDate);
+      } else {
+        rangeStart = new Date(viewDate);
+        rangeStart.setHours(0, 0, 0, 0);
+        rangeEnd = new Date(viewDate);
+        rangeEnd.setHours(23, 59, 59, 999);
+      }
+      fetchSchedule(rangeStart, rangeEnd);
+    } catch (error: any) {
+      console.error('Failed to resize task', error);
+      alert(error.response?.data?.message || 'Failed to resize task. Please try again.');
+    }
+  };
+
   // Fetch data when date or view changes
   useEffect(() => {
     let start, end;
@@ -100,9 +180,18 @@ export default function ScheduleView() {
       start = startOfWeek(viewDate);
       end = endOfWeek(viewDate);
     } else {
-      start = viewDate;
-      end = viewDate;
+      // Day view or other: ensure end is strictly after start
+      start = new Date(viewDate);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(viewDate);
+      end.setHours(23, 59, 59, 999);
     }
+
+    // Final safety check for backend validation
+    if (start.getTime() >= end.getTime()) {
+      end = new Date(start.getTime() + 1000 * 60 * 60 * 24 - 1); // +1 day minus 1ms
+    }
+
     fetchSchedule(start, end);
   }, [viewDate, currentView, fetchSchedule]);
 
@@ -220,8 +309,8 @@ export default function ScheduleView() {
             </div>
           </div>
         )}
-        <div style={{ height: '700px' }}>
-          <Calendar
+        <div style={{ height: '700px' }} className="select-none cursor-default">
+          <DnDCalendar
             localizer={localizer}
             events={events}
             startAccessor="start"
@@ -233,6 +322,15 @@ export default function ScheduleView() {
             date={viewDate}
             eventPropGetter={eventPropGetter}
             views={[Views.MONTH, Views.WEEK, Views.DAY]}
+            onEventDrop={handleEventDrop}
+            onEventResize={handleEventResize}
+            resizable
+            selectable
+            onSelectSlot={(slotInfo) => {
+              setViewDate(slotInfo.start);
+              setCurrentView(Views.DAY);
+            }}
+            draggableAccessor={() => true}
             components={{
               event: ({ event }: EventProps<CalendarEvent>) => (
                 <div className="flex flex-col h-full leading-tight overflow-hidden">
@@ -241,7 +339,7 @@ export default function ScheduleView() {
                 </div>
               )
             }}
-            tooltipAccessor={(event) => `${event.title} (${event.resource.project.name})\nAssignee: ${event.resource.assignee.name}`}
+            tooltipAccessor={(event) => `${event.title} (${event.resource.project.name})\nAssignee: ${event.resource.assignee.name}\nDrag to reschedule`}
           />
         </div>
       </div>

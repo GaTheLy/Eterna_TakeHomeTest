@@ -11,6 +11,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { Project } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class TasksService {
@@ -21,12 +22,14 @@ export class TasksService {
     private readonly projectRepository: Repository<Project>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   /**
    * Create a new task in a project
    * Validates that project and assignee exist
    * Defaults status to TODO
+   * Sends notification to assignee
    */
   async create(projectId: string, dto: CreateTaskDto): Promise<Task> {
     // Validate project exists
@@ -58,7 +61,21 @@ export class TasksService {
       scheduledEnd: new Date(dto.scheduledEnd),
     });
 
-    return await this.taskRepository.save(task);
+    const savedTask = await this.taskRepository.save(task);
+
+    // Send notification to assignee
+    this.notificationsGateway.sendNotification(
+      dto.assigneeId,
+      'task_assigned',
+      {
+        taskId: savedTask.id,
+        title: savedTask.title,
+        projectName: project.name,
+        message: `You have been assigned to task: ${savedTask.title}`,
+      },
+    );
+
+    return savedTask;
   }
 
   /**
@@ -139,6 +156,7 @@ export class TasksService {
   /**
    * Update task
    * Validates date constraints and updates fields and timestamp
+   * Sends notification if assignee changes
    */
   async update(id: string, dto: UpdateTaskDto): Promise<Task> {
     const task = await this.taskRepository.findOne({
@@ -149,6 +167,8 @@ export class TasksService {
     if (!task) {
       throw new NotFoundException(`Task with ID '${id}' not found`);
     }
+
+    const oldAssigneeId = task.assigneeId;
 
     // If assigneeId is being updated, validate the new assignee exists
     if (dto.assigneeId && dto.assigneeId !== task.assigneeId) {
@@ -205,7 +225,23 @@ export class TasksService {
     }
 
     // updatedAt is automatically updated by TypeORM
-    return await this.taskRepository.save(task);
+    const savedTask = await this.taskRepository.save(task);
+
+    // Send notification if assignee changed
+    if (dto.assigneeId && dto.assigneeId !== oldAssigneeId) {
+      this.notificationsGateway.sendNotification(
+        dto.assigneeId,
+        'task_assigned',
+        {
+          taskId: savedTask.id,
+          title: savedTask.title,
+          projectName: savedTask.project.name,
+          message: `You have been assigned to task: ${savedTask.title}`,
+        },
+      );
+    }
+
+    return savedTask;
   }
 
   /**

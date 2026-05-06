@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ScheduleModule } from './schedule/schedule.module';
     ProjectsModule,
     TasksModule,
     ScheduleModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

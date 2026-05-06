@@ -1,3 +1,72 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Calendar Overrides */
+.rbc-calendar, .rbc-calendar * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.rbc-event {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.rbc-event:active {
+  transform: scale(1.02);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  z-index: 50;
+}
+
+.rbc-off-range-bg {
+  background: #f9fafb;
+}
+
+.rbc-today {
+  background-color: #f0f9ff;
+}
+
+.rbc-month-view, .rbc-time-view {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb !important;
+}
+
+.rbc-header {
+  padding: 12px 0 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* Moving Object (Under Cursor) */
+.rbc-addons-dnd-drag-preview {
+  opacity: 1.0 !important;
+  pointer-events: none;
+}
+
+/* Shadow (Previous Location) - Hidden entirely per user request */
+.rbc-addons-dnd-dragged-event {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.rbc-addons-dnd-resizable-preview {
+  opacity: 0.6 !important;
+}
+
+/* Make entire cell clickable */
+.rbc-day-bg, .rbc-date-cell, .rbc-time-slot, .rbc-day-slot {
+  cursor: pointer !important;
+}
+
+.rbc-day-bg:hover, .rbc-time-slot:hover {
+  background-color: #f3f4f6 !important; /* gray-100 */
+}
