@@ -230,9 +230,3 @@ This project is a take-home assessment for Eterna Indonesia.
 - **Socket.io** for real-time communication
 - **Eterna Indonesia** for the opportunity
 
----
-
-**Built with ❤️ using NestJS, React, and PostgreSQL**
-
-**Submission Date**: May 6, 2026  
-**Developer**: Abelito Faleyrio Visese
