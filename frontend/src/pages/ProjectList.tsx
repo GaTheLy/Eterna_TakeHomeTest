@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { Plus, Folder } from 'lucide-react';
 import classNames from 'classnames';
+import ProjectFormModal from '../components/ProjectFormModal';
 
 interface Project {
   id: string;
@@ -15,23 +16,25 @@ interface Project {
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await api.get('/projects');
-        setProjects(response.data);
-      } catch (error) {
-        console.error('Failed to fetch projects', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjects();
+  const fetchProjects = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/projects');
+      setProjects(response.data);
+    } catch (error) {
+      console.error('Failed to fetch projects', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  if (loading && projects.length === 0) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
 
@@ -40,6 +43,7 @@ export default function ProjectList() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Projects</h1>
         <button
+          onClick={() => setIsModalOpen(true)}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <Plus className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
@@ -59,9 +63,9 @@ export default function ProjectList() {
             <Link
               key={project.id}
               to={`/projects/${project.id}`}
-              className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200"
+              className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200 flex flex-col"
             >
-              <div className="px-4 py-5 sm:p-6">
+              <div className="px-4 py-5 sm:p-6 flex-1">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg leading-6 font-medium text-gray-900 truncate">
                     {project.name}
@@ -77,10 +81,12 @@ export default function ProjectList() {
                     {project.status}
                   </span>
                 </div>
-                <div className="mt-2 max-w-xl text-sm text-gray-500 line-clamp-2">
+                <div className="mt-2 text-sm text-gray-500 line-clamp-3">
                   <p>{project.description}</p>
                 </div>
-                <div className="mt-4 text-xs text-gray-400">
+              </div>
+              <div className="bg-gray-50 px-4 py-4 sm:px-6 mt-auto">
+                <div className="text-xs text-gray-500">
                   Created on {new Date(project.createdAt).toLocaleDateString()}
                 </div>
               </div>
@@ -88,6 +94,15 @@ export default function ProjectList() {
           ))}
         </div>
       )}
+
+      <ProjectFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          fetchProjects();
+        }}
+      />
     </div>
   );
 }

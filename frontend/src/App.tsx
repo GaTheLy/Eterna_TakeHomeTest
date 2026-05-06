@@ -4,7 +4,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import ProjectList from './pages/ProjectList';
+import ProjectDetails from './pages/ProjectDetails';
 
 function App() {
   return (
@@ -12,6 +14,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           
           <Route
             path="/"
@@ -22,8 +25,7 @@ function App() {
             }
           >
             <Route index element={<ProjectList />} />
-            {/* These will be implemented in the next steps */}
-            <Route path="projects/:id" element={<div>Project Details (Coming soon)</div>} />
+            <Route path="projects/:id" element={<ProjectDetails />} />
             <Route path="schedule" element={<div>Schedule (Coming soon)</div>} />
           </Route>
           
